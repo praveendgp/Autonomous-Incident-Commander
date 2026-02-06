@@ -4,18 +4,17 @@
     <Properties>
         <Property name="serviceName">${env:SERVICE_NAME:-chaos-service}</Property>
         <Property name="logDir">logs</Property>
-        <Property name="errorLog">${logDir}/${serviceName}-error.log</Property>
-        <Property name="appLog">${logDir}/${serviceName}.log</Property>
     </Properties>
 
     <Appenders>
 
-        <!-- ========================= -->
-        <!-- ERROR LOGS (WITH THROWN) -->
-        <!-- ========================= -->
-        <RollingFile name="ErrorFile"
-                     fileName="${errorLog}"
-                     filePattern="${logDir}/${serviceName}-error-%d{yyyy-MM-dd}-%i.log.gz">
+        <!-- ===================== -->
+        <!-- ERROR LOGS (THROWN)  -->
+        <!-- ===================== -->
+        <RollingFile
+                name="ErrorFile"
+                fileName="${logDir}/${serviceName}-error.log"
+                filePattern="${logDir}/${serviceName}-error-%d{yyyy-MM-dd}-%i.log.gz">
 
             <Filters>
                 <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
@@ -24,22 +23,23 @@
             <JsonLayout
                     compact="true"
                     eventEol="true"
-                    stacktraceAsString="true"
-                    objectMessageAsJsonObject="true"
-                    properties="true"/>
+                    stacktraceAsString="true"/>
 
+            <!-- 🔴 REQUIRED -->
             <Policies>
                 <TimeBasedTriggeringPolicy/>
                 <SizeBasedTriggeringPolicy size="10MB"/>
             </Policies>
+
         </RollingFile>
 
-        <!-- =============================== -->
-        <!-- NON-ERROR LOGS (NO THROWN)     -->
-        <!-- =============================== -->
-        <RollingFile name="AppFile"
-                     fileName="${appLog}"
-                     filePattern="${logDir}/${serviceName}-%d{yyyy-MM-dd}-%i.log.gz">
+        <!-- ========================== -->
+        <!-- NON-ERROR LOGS (STRUCT)  -->
+        <!-- ========================== -->
+        <RollingFile
+                name="AppFile"
+                fileName="${logDir}/${serviceName}.log"
+                filePattern="${logDir}/${serviceName}-%d{yyyy-MM-dd}-%i.log.gz">
 
             <Filters>
                 <ThresholdFilter level="ERROR" onMatch="DENY" onMismatch="ACCEPT"/>
@@ -47,15 +47,14 @@
 
             <JsonLayout
                     compact="true"
-                    eventEol="true"
-                    stacktraceAsString="false"
-                    objectMessageAsJsonObject="true"
-                    properties="true"/>
+                    eventEol="true"/>
 
+            <!-- 🔴 REQUIRED -->
             <Policies>
                 <TimeBasedTriggeringPolicy/>
                 <SizeBasedTriggeringPolicy size="10MB"/>
             </Policies>
+
         </RollingFile>
 
     </Appenders>
