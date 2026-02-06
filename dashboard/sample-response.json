@@ -1,0 +1,69 @@
+{
+  "incident_id": "INC_LOCAL_001",
+  "status": "resolved",
+  "alert": {
+    "type": "latency_spike",
+    "service": "checkout"
+  },
+  "metrics": {
+    "service": "checkout",
+    "window": "15m",
+    "datapoints": [
+      {
+        "timestamp": "2026-02-06T09:11:50.499952+00:00",
+        "latency_ms": 2092,
+        "cpu": 33,
+        "memory": 55
+      },
+      {
+        "timestamp": "2026-02-06T09:14:50.499952+00:00",
+        "latency_ms": 2088,
+        "cpu": 30,
+        "memory": 58
+      },
+      {
+        "timestamp": "2026-02-06T09:17:50.499952+00:00",
+        "latency_ms": 1889,
+        "cpu": 50,
+        "memory": 59
+      },
+      {
+        "timestamp": "2026-02-06T09:20:50.499952+00:00",
+        "latency_ms": 1903,
+        "cpu": 33,
+        "memory": 53
+      },
+      {
+        "timestamp": "2026-02-06T09:23:50.499952+00:00",
+        "latency_ms": 2032,
+        "cpu": 42,
+        "memory": 56
+      }
+    ]
+  },
+  "logs": {
+    "errors": [
+      "DB connection failed after 100000ms",
+      "Failed to acquire DB connection"
+    ],
+    "count": 12
+  },
+  "deploy_context": {
+    "last_deploy": "2026-02-06T10:30:00",
+    "change": "DB_POOL_SIZE reduced to 5"
+  },
+  "historical_matches": [
+    {
+      "incident_id": "INC_001",
+      "symptoms": ["latency_spike"],
+      "root_cause": "db_pool_misconfig",
+      "action": "rollback",
+      "timestamp": "2026-01-12T09:15:00"
+    }
+  ],
+  "hypothesis": "Recent DB configuration reduced connection pool size, causing timeouts and elevated latency for the checkout service.",
+  "confidence": 0.9,
+  "recommended_action": "Rollback the DB_POOL_SIZE change to its previous value and increase pool capacity, then monitor latency and error rates.",
+  "report": "Summary:\nThe checkout service experienced a sustained latency spike caused by an overly aggressive reduction in database connection pool size.",
+  "next_action": "finish"
+}

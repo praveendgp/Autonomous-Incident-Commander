@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🚨 Incident Command Center</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root {
+  --neon:#38bdf8;
+  --danger:#ef4444;
+  --success:#22c55e;
+  --warning:#f59e0b;
+}
+
+body {
+  margin:0;
+  padding:24px;
+  background:#020617;
+  color:#e5e7eb;
+  font-family:Inter;
+}
+
+body.alerting {
+  animation:shake .35s infinite;
+}
+@keyframes shake {
+  0%{transform:translate(0)}
+  25%{transform:translate(-2px,2px)}
+  50%{transform:translate(2px,-2px)}
+  75%{transform:translate(-2px,-2px)}
+  100%{transform:translate(0)}
+}
+
+h1 {
+  font-family:Orbitron;
+  color:var(--neon);
+  text-shadow:0 0 15px #38bdf8aa;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
+  gap:20px;
+}
+
+.card {
+  background:#020617;
+  border-radius:18px;
+  padding:20px;
+  box-shadow:0 0 30px #000,inset 0 0 20px #38bdf822;
+}
+
+.card h2 {
+  font-family:Orbitron;
+  font-size:1rem;
+  color:#7dd3fc;
+}
+
+.badge {
+  padding:6px 14px;
+  border-radius:999px;
+  font-weight:700;
+}
+.alert { background:var(--danger); box-shadow:0 0 20px var(--danger); }
+.ok { background:var(--success); color:black; }
+
+.btn {
+  background:#020617;
+  color:#7dd3fc;
+  border:1px solid #38bdf8;
+  padding:8px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  font-family:Orbitron;
+  box-shadow:0 0 12px #38bdf833;
+}
+.btn:hover {
+  background:#38bdf8;
+  color:#020617;
+}
+
+.gauge {
+  width:160px;height:80px;
+  border-radius:160px 160px 0 0;
+  background:conic-gradient(
+    var(--danger) 0deg,
+    var(--warning) 120deg,
+    var(--success) 240deg,
+    #1f2937 240deg
+  );
+  margin:auto;
+  position:relative;
+}
+.needle {
+  width:4px;height:70px;
+  background:white;
+  position:absolute;
+  bottom:0;left:50%;
+  transform-origin:bottom;
+  transition:1s;
+}
+
+.brain {
+  width:140px;height:140px;
+  border-radius:50%;
+  background:conic-gradient(
+    var(--warning) calc(var(--val)*1%),
+    #1f2937 0
+  );
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  animation:glow 2s infinite alternate;
+}
+@keyframes glow {
+  from { box-shadow:0 0 20px #f59e0b66; }
+  to { box-shadow:0 0 50px #f59e0b; }
+}
+
+.metric-row {
+  display:flex;
+  justify-content:space-between;
+  font-size:.85rem;
+  border-bottom:1px dashed #334155;
+  padding:6px 0;
+}
+
+pre {
+  font-size:.8rem;
+  white-space:pre-wrap;
+  color:#c7d2fe;
+}
+
+footer {
+  text-align:center;
+  opacity:.6;
+  margin-top:30px;
+  font-size:.8rem;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🚨 Incident Command Center</h1>
+
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;">
+  <button class="btn" onclick="fetchAlert()">🔄 Load Live API</button>
+  <button class="btn" onclick="loadSample()">🧪 Load Sample Data</button>
+  <div id="lastUpdated" style="opacity:.7;font-size:.85rem;"></div>
+</div>
+
+<div id="dashboard" class="grid"></div>
+
+<footer>Chaos / AI Incident Intelligence</footer>
+
+<script>
+const API_URL = "http://localhost:8080/alerts";
+let chart;
+
+function updateTimestamp(source) {
+  document.getElementById("lastUpdated").innerHTML =
+    `🕒 Last updated: <b>${new Date().toLocaleString()}</b> (${source})`;
+}
+
+async function fetchAlert() {
+  const res = await fetch(API_URL);
+  const data = await res.json();
+  render(data);
+  updateTimestamp("live API");
+}
+
+async function loadSample() {
+  const res = await fetch("sample-response.json");
+  const data = await res.json();
+  render(data);
+  updateTimestamp("sample data");
+}
+
+function render(d) {
+  document.body.classList.toggle("alerting", d.status !== "resolved");
+
+  const latest = d.metrics.datapoints.at(-1);
+  const latency = latest.latency_ms;
+  const angle = Math.min(180, latency / 3000 * 180) - 90;
+  const confidence = Math.round(d.confidence * 100);
+
+  document.getElementById("dashboard").innerHTML = `
+    <div class="card">
+      <h2>INCIDENT</h2>
+      <p><b>${d.incident_id}</b></p>
+      <span class="badge ${d.status === "resolved" ? "ok" : "alert"}">${d.status}</span>
+      <p>${d.alert.service} • ${d.alert.type}</p>
+    </div>
+
+    <div class="card">
+      <h2>LATENCY GAUGE</h2>
+      <div class="gauge">
+        <div class="needle" style="transform:rotate(${angle}deg)"></div>
+      </div>
+      <p style="text-align:center">${latency} ms</p>
+    </div>
+
+    <div class="card">
+      <h2>METRICS (${d.metrics.window})</h2>
+      ${d.metrics.datapoints.map(p => `
+        <div class="metric-row">
+          <span>${new Date(p.timestamp).toLocaleTimeString()}</span>
+          <span>${p.latency_ms}ms | CPU ${p.cpu}% | MEM ${p.memory}%</span>
+        </div>
+      `).join("")}
+    </div>
+
+    <div class="card">
+      <h2>LATENCY TREND</h2>
+      <canvas id="latChart"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>ERROR LOGS (${d.logs.count})</h2>
+      <ul>
+        ${d.logs.errors.map(e => `<li style="color:#fca5a5">${e}</li>`).join("")}
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>DEPLOY CONTEXT</h2>
+      <p><b>Last Deploy:</b><br>${d.deploy_context.last_deploy}</p>
+      <p><b>Change:</b><br>${d.deploy_context.change}</p>
+    </div>
+
+    <div class="card">
+      <h2>HISTORICAL MATCHES</h2>
+      ${d.historical_matches.map(h => `
+        <p>
+          <b>${h.incident_id}</b><br>
+          Symptoms: ${h.symptoms.join(", ")}<br>
+          Root Cause: ${h.root_cause}<br>
+          Action: ${h.action}
+        </p>
+      `).join("")}
+    </div>
+
+    <div class="card">
+      <h2>AI CONFIDENCE</h2>
+      <div class="brain" style="--val:${confidence}">
+        <span>${confidence}%</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>HYPOTHESIS</h2>
+      <p>${d.hypothesis}</p>
+    </div>
+
+    <div class="card">
+      <h2>RECOMMENDED ACTION</h2>
+      <p>${d.recommended_action}</p>
+      <p><b>Next Action:</b> ${d.next_action}</p>
+    </div>
+
+    <div class="card">
+      <h2>INCIDENT REPORT</h2>
+      <pre>${d.report}</pre>
+    </div>
+  `;
+
+  drawChart(d);
+}
+
+function drawChart(d) {
+  const ctx = document.getElementById("latChart");
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type:"line",
+    data:{
+      labels:d.metrics.datapoints.map(p =>
+        new Date(p.timestamp).toLocaleTimeString()
+      ),
+      datasets:[{
+        data:d.metrics.datapoints.map(p => p.latency_ms),
+        borderColor:"#38bdf8",
+        backgroundColor:"#38bdf833",
+        fill:true,
+        tension:.4
+      }]
+    },
+    options:{
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ color:"#94a3b8" } },
+        y:{ ticks:{ color:"#94a3b8" } }
+      }
+    }
+  });
+}
+
+/* Auto-load sample on first open */
+loadSample();
+
+// Auto refresh live data every 30s (optional)
+setInterval(fetchAlert, 30000);
+
+</script>
+
+</body>
+</html>
